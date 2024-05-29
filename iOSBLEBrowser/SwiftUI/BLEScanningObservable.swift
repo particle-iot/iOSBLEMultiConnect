@@ -132,4 +132,8 @@ class ParticleBLEScanningObservable: ObservableObject, ParticleBLEScannerStatusD
         //this will cause BLE to be turned on. Its a good place to prime the user for the permissions dialog
         ParticleBLEExampleGlobals.particleBLEScannerInstance.connect(peripheral: peripheral, characteristics: characteristics)
     }
+    
+    func sendBuffer(peripheral: CBPeripheral, characteristic: ParticleBLECharacteristic, buffer: [UInt8] ) {
+        ParticleBLEExampleGlobals.particleBLEScannerInstance.sendBuffer(peripheral: peripheral, characteristic: characteristic, buffer: buffer)
+    }
 }

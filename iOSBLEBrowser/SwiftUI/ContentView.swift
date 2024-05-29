@@ -16,7 +16,11 @@ struct ContentView: View, ParticleBLEScanningObservableDelegate {
     @StateObject var particleBLEScanningObservable = ParticleBLEScanningObservable()
     
     let serviceUUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
-    
+
+    //the things we want to talk to in our peripheral
+    let writeChar = ParticleBLECharacteristic(characteristic: CBUUID(string: "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"), type: CBCharacteristicProperties.write)
+    let readChar = ParticleBLECharacteristic(characteristic: CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"), type: [.read, .notify])
+
     var body: some View {
         NavigationView {
             VStack() {
@@ -54,18 +58,31 @@ struct ContentView: View, ParticleBLEScanningObservableDelegate {
                     //if selected, then connect to the device
                     .onTapGesture {
                         print("Selected device: \(device.name)")
-
-                        //the things we want to talk to in our peripheral
-                        let writeChar = ParticleBLECharacteristic(characteristic: CBUUID(string: "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"), type: CBCharacteristicProperties.write)
                         
-                        //set .read, .notify
-                        var readNotify = CBCharacteristicProperties()
-                        readNotify.insert(.read)
-                        readNotify.insert(.notify)
-
-                        let readChar = ParticleBLECharacteristic(characteristic: CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"), type: readNotify)
+                        var connect = false;
+                        var sendMessage = false;
                         
-                        particleBLEScanningObservable.connect(peripheral: device.peripheral!, characteristics: [writeChar, readChar])
+                        if particleBLEScanningObservable.discoveredPeripherals.contains(where: { $0.uuid == device.uuid && $0.state == .disconnected }) {
+                            connect = true;
+                        }
+                        else if particleBLEScanningObservable.discoveredPeripherals.contains(where: { $0.uuid == device.uuid && $0.state == .connecting }) {
+                            //do nothing
+                        }
+                        else if particleBLEScanningObservable.discoveredPeripherals.contains(where: { $0.uuid == device.uuid && $0.state == .connectingDiscoveringCharacterstics }) {
+                            //do nothing
+                        }
+                        else if particleBLEScanningObservable.discoveredPeripherals.contains(where: { $0.uuid == device.uuid && $0.state == .connected }) {
+                            //send a message
+                            sendMessage = true;
+                        }
+                        
+                        if connect {                            
+                            particleBLEScanningObservable.connect(peripheral: device.peripheral!, characteristics: [writeChar, readChar])
+                        }
+                        
+                        if sendMessage {
+                            particleBLEScanningObservable.sendBuffer(peripheral: device.peripheral!, characteristic: writeChar, buffer: [0x01, 0x02, 0x03])
+                        }
                     }
 
                     

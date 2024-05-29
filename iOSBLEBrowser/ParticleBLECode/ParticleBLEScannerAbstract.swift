@@ -165,7 +165,7 @@ public class ParticleBLEScannerAbstract : NSObject {
         assert( false )
     }
     
-    func sendBuffer(peripheral: CBPeripheral, buffer: [UInt8]) {
+    func sendBuffer(peripheral: CBPeripheral, characteristic: ParticleBLECharacteristic, buffer: [UInt8]) {
         assert( false )
     }
 }

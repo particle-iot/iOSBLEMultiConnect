@@ -43,7 +43,7 @@ class ParticleBLEScanner: ParticleBLEScannerAbstract {
     }
     
     override func stopScanning() {
-        //always go back to idle
+        //always go back to idlef
         updateState(state: .idle)
     }
 
@@ -74,6 +74,19 @@ class ParticleBLEScanner: ParticleBLEScannerAbstract {
 
             return peripheralState[peripheral]
         }
+        else {
+            //if this already exists but we are disconnected, try and connect again
+            if( peripheralState[peripheral]!.state == .disconnected ) {
+                self.centralManager.connect(peripheral)
+                
+                peripheralState[peripheral]?.state = .connecting
+                
+                //notify the delegates
+                informDelegatesOfPeripheralStatusUpdate(peripheral: peripheral, state: peripheralState[peripheral]!.state)
+
+                return peripheralState[peripheral]
+            }
+        }
 
         return nil;
     }
@@ -93,7 +106,7 @@ class ParticleBLEScanner: ParticleBLEScannerAbstract {
         }
     }
     
-    override func sendBuffer(peripheral: CBPeripheral, buffer: [UInt8]) {
+    override func sendBuffer(peripheral: CBPeripheral, characteristic: ParticleBLECharacteristic, buffer: [UInt8]) {
         let maxPacketSize: Int? = peripheral.maximumWriteValueLength(for: .withoutResponse)
        
         var bufferSize = buffer.count
@@ -108,11 +121,16 @@ class ParticleBLEScanner: ParticleBLEScannerAbstract {
         
         //go through peripheralState[peripheral]?.characteristics and find the one with a .write flag
         for c in peripheralState[peripheral]!.characteristics {
-            if c.type.contains(.write) {
-                rxCharacteristicOurs = c.characteristic.uuidString
+
+            //see if it matches characteristic as passed in
+            if c.characteristic.uuidString == characteristic.characteristic.uuidString {
+                //check its valid to write to
+                if c.type.contains(.write) {
+                    rxCharacteristicOurs = c.characteristic.uuidString
+                }
             }
         }
-        
+  
         //now find the iOS one
         for c in peripheralState[peripheral]!.foundCharacteristics {
             if c.key == rxCharacteristicOurs {
@@ -240,6 +258,7 @@ extension ParticleBLEScanner: CBCentralManagerDelegate {
         if let advertisementUUIDs = advertisementData["kCBAdvDataServiceUUIDs"] as? [CBUUID] {
             for uuid in advertisementUUIDs {
                 print("advertisementUUIDs: \(uuid)")
+                print("looking for \(serviceUUID)")
     
     //            guard let name = peripheral.name else { "unknown" }
     //            print("name: \(name)")
@@ -247,38 +266,10 @@ extension ParticleBLEScanner: CBCentralManagerDelegate {
                 if serviceUUID == uuid.uuidString {
                     if( self.scanningState == .lookingForDevices ) {
                         informDelegatesOfNewDevice(peripheral: peripheral)
-                        
-                        self.centralManager.stopScan()
                     }
                 }
             }
         }
-//
-//        do {
-//            guard let name = peripheral.name else { return }
-//            
-//            print("name: \(name)")
-//            
-//            if name.contains(bleName) {
-//                do {
-//                    //
-//                    let (companyID, _, _) = try getManufacturingData( advertisementData: advertisementData )
-//                    
-//                    //check the companyID - you should change this on a per product implementation
-//                    //these defaults are for Particle's tinker implementation
-//                    //assert(companyID == 0x1234)
-//                    //assert(platformID == 0x0020)
-//                    //print(setupCode)
-//                }
-//                catch {
-//                    
-//                }
-//                
-//                if( self.state == .lookingForDevices ) {
-//                    informDelegatesOfNewDevice(peripheral: peripheral)
-//                }
-//            }
-//        }
     }
     
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
@@ -349,6 +340,13 @@ extension ParticleBLEScanner: CBPeripheralDelegate {
             //if we have found all the characteristics we are looking for, we are connected
             if peripheralState[peripheral]!.foundCharacteristics.count == peripheralState[peripheral]!.characteristics.count {
                 peripheralState[peripheral]?.state = .connected
+                
+                //register for notifications from the one with notify as a characteristic property
+                for c in peripheralState[peripheral]!.characteristics {
+                    if c.type.contains(.notify) {
+                        peripheral.setNotifyValue(true, for: peripheralState[peripheral]!.foundCharacteristics[c.characteristic.uuidString]!!)
+                    }
+                }
 
                 //notify the delegates
                 informDelegatesOfPeripheralStatusUpdate(peripheral: peripheral, state: .connected)
