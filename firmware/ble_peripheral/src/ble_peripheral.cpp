@@ -1,10 +1,10 @@
-/* 
- * Project myProject
- * Author: Your Name
- * Date: 
- * For comprehensive documentation and examples, please visit:
- * https://docs.particle.io/firmware/best-practices/firmware-template/
- */
+//This program:
+// - advertises a BLE service with two characteristics
+// - one characteristic is a read characteristic that contains max available payload size
+// - the other characteristic is a write characteristic that can be used to send data to the device
+//
+// When data is received on the write characteristic, the device will change the RGB LED to a random colour 
+// and then set a timer to change the LED back to Particle blue after 3 seconds
 
 // Include Particle Device OS APIs
 #include "Particle.h"
@@ -29,6 +29,8 @@ uint32_t rainbowLEDTimer = 0;
 void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context) {
     Log.info("Data (%d bytes):", len);
     Log.info("%.*s", len, data);
+
+    //we ignore the data - you can do what you want with it here however
 
     RGB.control(true);
 
@@ -102,7 +104,7 @@ uint32_t printLoop = 0;
 
 // loop() runs over and over again, as quickly as it can execute.
 void loop() {
-  //every 10 seconds, print out the BLE status without delayed
+  //every 10 seconds, print out the BLE status
   if (millis() - printLoop > 10000) {
     printLoop = millis();
     Log.info("BLE status: %d", BLE.connected());
